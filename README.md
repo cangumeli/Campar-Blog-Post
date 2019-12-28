@@ -8,7 +8,7 @@ Representing 3D shapes is an open problem in 3D computer vision and computer gra
 
 Let's start with what a signed distance function (SDF) is. It is a function that takes a point (a 3D point in our case) and gives its signed distance to the closest surface. The sign of this distance is `+` if the point is inside the surface, `-` otherwise. Note that in shape representation, we assume the shape is a single closed surface.
 
-Signed-distance functions can represent surfaces smoothly. If we consider two points, one with `+` and one with `-` signed distance, we can locate a point by their weighted average. Sampling many points near the surface, we can obtain a set of very precise locations for surface points. Rendering can be done with well-known algorithms, such as ray-casting and marching cubes. Last, but not least, some open-source software is available to reconstruct SDFs from depth images. 
+Signed-distance functions can represent surfaces smoothly. If we consider two points, one with `+` and one with `-` signed distance, we can locate a point by their weighted average. Sampling many points near the surface, we can obtain a set of very precise locations for surface points. Rendering can be done with well-known algorithms, such as ray-casting and marching cubes. Last, but not least, some open-source software is available to reconstruct SDFs from depth images.
 
 ### DeepSDF Motivations
 SDFs are awesome! However, to be used in practical applications, they need to be stored as voxels (3D images). Voxels are very inefficient in terms of disk space, memory use and computation. Therefore, we have to discretize too much for efficiency, at the expense of losing accuracy.
@@ -85,11 +85,40 @@ What instead can be done is to optimize a new latent vector of an upcoming shape
 There are two very important points to make about the inference formulation. First, ground-truth point-sdf pairs are available in inference time as well! However, these ground-truth points are available only for a sample of points, and we want to obtain the continuous function for the whole shape. This detail is especially important for shape-completion, as we will see a little bit later. Second, inference requires an entire training process with multiple backward passes of the network. This makes the model very slow at inference, probably the biggest downside of DeepSDF approach.
 
 ### Dataset Preparation
-Of course, having a model is not enough to do deep learning, we also need data! Similar to most other works in 3D deep learning, they use a Computer-Aided Design (CAD) model dataset to obtain clean 3D shapes. In particular, they use the ShapeNet dataset, one of the most popular CAD model datasets (together with ModelNet). They normalize shapes into the unit sphere and ensure all shapes have a canonical pose (there are no upside-down chairs!).
+Of course, having a model is not enough to do deep learning, we also need data! Similar to most other works in 3D deep learning, they use a Computer-Aided Design (CAD) model dataset to obtain clean 3D shapes. In particular, they use the ShapeNet dataset, one of the most popular CAD model datasets (together with ModelNet). They normalize shapes into the unit sphere and ensure all shapes have a canonical pose (there are no upside-down chairs!). This coordinate system should be kept in mind, several values including the truncation distance (0.1) and virtually all the performance metrics from now on will live in the unit sphere coordinate system!
 
 SDFs can be obtained from meshes, and as a synthetic dataset, ShapeNet consists of meshes. However, instead of using meshes, they sampled a lot of points from different viewpoints and sampled SDFs around them! It is ironic that they technically used a point-based representation for data preparation, but we should note that the task is sampling data, not rendering. Since authors want watertight (closed) surfaces being produced, they also employed a heuristic to eliminate non-watertight shapes. They do so by counting triangles whose different sides are observed from opposite views and eliminate the shapes where this count is large. This elimination is the major advantage of using a multi-view approach.
 
 
 ### Model and Training Details
-In most of their experiments, authors used an 8-layer Fully Connected Network with a residual connection from input to layer 4. They use standard ReLU activations, but not-so-standard weight normalization instead of more popular batch normalization. The advantage of weight normalization over batch normalization is that it doesn't correlate with different shapes with each other. Adam optimizer with standard parameters is used. The truncation parameter is set to 0.1, and latent vectors are initialized from a normal distribution with small variance (reportedly 0.001). Tanh activation is used to ensure outputs are normalized. Training took 8 hours on 8 GPUs.
+In most of their experiments, authors used an 8-layer Fully Connected Network with a residual connection from input to layer 4. They use standard ReLU activations, but not-so-standard weight normalization instead of more popular batch normalization. The advantage of weight normalization over batch normalization is that it doesn't correlate shapes with each other. Adam optimizer with standard parameters is used. The truncation parameter is set to 0.1, and latent vectors are initialized from a normal distribution with small variance (reportedly 0.001). Tanh activation is used to ensure outputs are normalized. Training took 8 hours on 8 GPUs.
+
+The authors actually made various ablation studies to justify their decisions. They showed, for example, that the residual connection is crucial for the optimization process, by conveying overfitting experiments at different model sizes. 
+
+A very important ablation study that attracted my attention is the truncation parameter. One can see that larger truncation parameter values give worse results, as fewer resources are concentrated around the surfaces. In the end, shape representation is about representing surfaces. Clearly, though, we need to have a non-zero truncation distance for smoothness enabled by SDF representation. Hence, selected 0.1 is a good choice.
+
+## Experiments
+Let's now see some experimental results! Authors attacked three main tasks in this paper: 
+1) Representing known shapes
+2) representing unknown shapes
+3) Shape completion. 
+These tasks are quantitatively measurable. The quantitative results are compared against the baseline models I introduced in the related work section. 
+
+Apart from how DeepSDF scores, I also discuss two other important experiments in this post. The first one is quantitative results that show latent codes can be interpolated to obtain new shapes, something you see in all embedding papers. The second one is how noise effect the model performance, which I think is more interesting!
+
+### Representing Known Shapes
+Technically, we don't have to use neural networks for machine learning. They are simply nonlinear function approximators, anywhere we need to approximate a function, we can use them! Representing known shapes is actually such a non-learning task, where we actually address compression of a known shape database. 3D data are complex, so this overfitting task is still very difficult.
+
+Here, what authors did is to directly follow the auto-decoder based training formulation. They optimize one latent vector per shape and a network for shape category. They then reconstruct surfaces using their trained models and embeddings, reporting better scores in Chamfer and Earth Mover's Distance metrics compared to baseline models.
+
+### Representing Unknown Shapes
+And now, we do actual learning! We have the same training method in the previous section, but this time we don't know the shape embeddings. Therefore, we just optimize the shape embeddings at inference. We train an Adam optimizer similar to training, but by freezing network parameters and only optimizing the latent vectors. The inference is very slow, but again DeepSDF outperforms the baseline models.
+
+One very weird detail we have here is to assume we assume we have some ground-truth samples of SDF values for the shape! They basically show latent code can represent a continuous SDF from discrete samples, and a new latent code can be obtained from these discrete samples. Is this really learning or do we still overfit? It depends on your viewpoint. One question that comes to mind is whether or not sampled discrete SDF values are themselves enough to represent shapes.
+
+### Shape Completion
+A very natural extension of DeepSDF method is shape completion. More specifically, we now have a single depth camera image and try to obtain the whole shape from it. The details of surface elements not visible are missing.
+
+I think this is by far the most interesting problem they attempt to solve. This is because we now don't have ground-truth SDF values to represent all parts of a surface, we have to learn some! 
+
 
