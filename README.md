@@ -19,7 +19,11 @@ DeepSDF people instead suggest learning the SDFs with a neural network. An SDF l
 ### DeepSDF Contribution
 At a high level,  authors first define an embedding lookup, where each shape in a shape category has an embedding latent vector. They then train a single deep fully-connected neural network per shape category. The network takes the embedding vector and a 3D point as the input, and gives signed distance value as the output. New embedding vectors can be obtained for unknown shapes via interpolation or by optimizing for a new embedding vector.
 
-I will discuss further details on how they formulate the problem and train their models exactly. Before that, let's take a small break from DeepSDF and review shortly some related works that will serve our understanding.
+DeepSDF allows training a single neural network per an entire database of shapes, in our case a database of shapes in a single category. Embedding vectors can be pretty small, like 128 or 256 dimensional. Event if shapes were represented as very small voxel grids of size 32x32x32, a single voxel grid would take up the space of 128 embeddings!
+
+The authors address three problems using their models. First, they try to compress a known category of shapes, measuring the accuracy of reconstruction using the shared neural network and small embeddings. Then, they address the same problem with unknown shapes to assess the learning capability of their model. Third, they attack the problem of shape completion, which is, as we will see, a very natural extension of DeepSDF framework.
+
+If you don't understand some details, don't worry, I will discuss further details on how they formulate the problem and train their models exactly. Before that, let's take a small break from DeepSDF and review shortly some related works that will serve our understanding.
 
 
 ## Related Works
@@ -57,3 +61,35 @@ An Auto-Decoder is an auto-encoder without an encoder. It learns latent codes an
 
 ### Shape Completion
 For shape completion, the authors compare their results with an architecture called 3D-EPN. This architecture predicts a coarse, low-resolution voxel grid from an incomplete one. Then, they increase this resolution by retrieving and using reference shapes. Another significance of this approach is that it uses SDFs in the voxel form.
+
+
+## Methodology
+In this section, I discuss the authors' mathematical formulation of SDFs as neural networks. As the authors did in the paper, I first start with the naive idea of training a neural network per SDF, and then study the re-formulation as a generative model. I also explain the data generation process, model and training details they used.
+
+### SDFs as Neural Networks
+We want a neural network model (or simply a parametric function approximator) that can produce signed distance values for a given point. Here, let's forget about shape databases and consider we have a single shape `X`. Our dataset is sampled from this shape, as ground-truth `<point, sdf(point)>` pairs. We can now basically overfit a neural network to this shape. The resulting neural network becomes our DeepSDF representation.
+
+Another important detail to note is DeepSDF technically learns a Truncated Signed Distance Function (TSDF). TSDF allows marking regions too far away from the surface as empty, making the SDF concentrate around the points in the surface, which are the ones that are important for rendering.
+
+Clearly, this approach is not feasible. Yes, using voxels were inefficient, but so does having a several-million parameter neural network trained for each shape! This brings us to our auto-decoder based formulation.
+
+### SDFs as Auto-Decoders
+As noted before, DeepSDF is actually an auto-decoder. To be more specific, DeepSDF can be seen as a conditional auto-decoder. In this formulation, embedding vectors are latent codes, 3D points are conditions, and the neural network is the decoder. While a similar formulation is possible with other generative models, like GANs, authors chose to use an Auto-Decoder.  
+
+Here, we rather have an array of `X`s, while every `X` still is a shape with `(point, sdf(point))` pairs. We have a single neural network and a set of latent vector `z`s, one vector per shape. Using this training data, we optimize both latent vectors and neural network parameters using backpropagation and gradient descent.
+
+The tricky situation here is to use this model at inference. If you have previous experience in embeddings used in natural language processing (NLP), you would note that the situation here is pretty different. In NLP, each embedding vector represents a discrete element (often a character or a word). Both training and test data in a particular language is a sequence of these discrete elements, and a finite vocabulary can be assumed. In the DeepSDF case, infinite possible instances of a category, we can have infinitely many different objects. We, therefore, cannot assume there is a finite vocabulary of possible objects.
+
+What instead can be done is to optimize a new latent vector of an upcoming shape. We freeze the network parameters, and simply using the fact that neural networks are differentiable with respect to their inputs, we optimize latent vectors using gradient-descent.
+
+There are two very important points to make about the inference formulation. First, ground-truth point-sdf pairs are available in inference time as well! However, these ground-truth points are available only for a sample of points, and we want to obtain the continuous function for the whole shape. This detail is especially important for shape-completion, as we will see a little bit later. Second, inference requires an entire training process with multiple backward passes of the network. This makes the model very slow at inference, probably the biggest downside of DeepSDF approach.
+
+### Dataset Preparation
+Of course, having a model is not enough to do deep learning, we also need data! Similar to most other works in 3D deep learning, they use a Computer-Aided Design (CAD) model dataset to obtain clean 3D shapes. In particular, they use the ShapeNet dataset, one of the most popular CAD model datasets (together with ModelNet). They normalize shapes into the unit sphere and ensure all shapes have a canonical pose (there are no upside-down chairs!).
+
+SDFs can be obtained from meshes, and as a synthetic dataset, ShapeNet consists of meshes. However, instead of using meshes, they sampled a lot of points from different viewpoints and sampled SDFs around them! It is ironic that they technically used a point-based representation for data preparation, but we should note that the task is sampling data, not rendering. Since authors want watertight (closed) surfaces being produced, they also employed a heuristic to eliminate non-watertight shapes. They do so by counting triangles whose different sides are observed from opposite views and eliminate the shapes where this count is large. This elimination is the major advantage of using a multi-view approach.
+
+
+### Model and Training Details
+In most of their experiments, authors used an 8-layer Fully Connected Network with a residual connection from input to layer 4. They use standard ReLU activations, but not-so-standard weight normalization instead of more popular batch normalization. The advantage of weight normalization over batch normalization is that it doesn't correlate with different shapes with each other. Adam optimizer with standard parameters is used. The truncation parameter is set to 0.1, and latent vectors are initialized from a normal distribution with small variance (reportedly 0.001). Tanh activation is used to ensure outputs are normalized. Training took 8 hours on 8 GPUs.
+
