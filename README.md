@@ -146,6 +146,6 @@ DeepSDF has significant memory advantage over previous methods, while also avoid
 ### My Additions
 In addition to conclusions authors reached, I have some additions.
 
-I think, DeepSDF can be used in many different interesting applications in 3D deep learning such as single-view 3D reconstruction, joined natural language processing and 3D, and many more. As the challenges authors pointed out in their conclusions being solved, these applications become more and more feasible. 
+I think, DeepSDF can be used in many interesting applications in 3D deep learning such as single-view 3D reconstruction, joined natural language processing and 3D, and many more. As the challenges authors pointed out in their conclusions being solved, these applications become more and more feasible. 
 
 In my opinion, one downside of DeepSDF is that it is unclear how to use it in practical applications without discretization. How should I input a DeepSDF to another neural network without converting it to a set of points or a voxel grid? Considering authors stress a lot that their approach avoid discretization errors, this is a very important open problem for the future.
