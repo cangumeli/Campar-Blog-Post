@@ -56,7 +56,7 @@ Polygonal Meshes represent shapes as groups of points that form polygons on the 
 
 In the world of meshes, one related work very similar to DeepSDF approach is AltasNet. This work also uses embeddings and shared neural networks per category. The standard AtlasNet first parameterizes 2D squares, and then deform them into 3D rectangles. Combining many of those squares, a 3D quad-mesh is obtained. A sketch of the model architecture is seen below:
 
-![AtlasNet architecture](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AtlasNet.png)
+![AtlasNet architecture](AtlasNet.png)
 
 The aforementioned square-based AtlasNet approach cannot create closed surfaces. This is because combinint many local deformed squares do not give any global completeness guarantees. To address this problem, they also define a version that deforms a parametric sphere. This version drops some fine details, but it can create closed surfaces.
 
@@ -68,10 +68,10 @@ Voxels are super-easy to work with using neural networks! Just replace all `Conv
 
 One important related work in voxel-based shape representation is the Octree-generating network(OGN). OGN uses a hierarchical data representation called Octrees to generate shapes. OGN predicts both the structure and content of an octree with a convolutional neural network. Octrees can assign more voxels to more complex regions (e.g. face of a human), and less voxels to simple regions (e.g. backgroud). This adaptive resolution allow OGN to process high-resolution voxel grids efficiently.
 
-![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/OGN2.png)
+![](Images/OGN2.png)
 *OGN makes prediction at multiple resolutions recursively.*
 
-![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/OGN.png)
+![](Images/OGN.png)
 *OGN learns the octree structure, using grount-truth structure at multiple resolutions.*
 
 ### Generative Models
@@ -86,7 +86,7 @@ GANs learn to generate data from latent embeddings by training discrimators adve
 Auto-encoders learn to predict latent embeddings from the original input data using an encoder neural network. With the predicted latent code, the decoder network learns to reconstuct the original input. Auto-Encoders, especially the VAEs, used very commonly in 3D deep learning. However, in many 3D representation learning applications, only the decoder part is used. A natural question is: Why training a large encoder network is necessary if we won't use it?
 
 #### Auto-Decoders
-<img align="left" src="https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AutoDecoder.png" width="150"/>
+<img align="left" src="Images/AutoDecoder.png" width="150"/>
 
 An Auto-Decoder is an auto-encoder without an encoder. It learns latent codes and a decoder for representing the data. Authors claim this architecture is easier to train compared to GANs and VAEs, and do not contain the unnecessary encoder module seen in Auto-Encoders.
 
@@ -95,7 +95,7 @@ The latent code learning can be understood as an `embedding_lookup` function tha
 ### Shape Completion
 For shape completion, the authors compare their results with an architecture called 3D-EPN. This architecture predicts a coarse, low-resolution voxel grid from an incomplete one. Then, they increase this resolution by retrieving and using reference shapes. Another significance of this approach is that it uses SDFs in the voxel form.
 
-![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/3DEPN.png)
+![](Images/3DEPN.png)
 *3D-EPN architecture that completes the incomplete voxel grids.*
 
 ## Methodology
