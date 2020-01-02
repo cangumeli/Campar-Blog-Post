@@ -93,12 +93,12 @@ When it comes to popularity, generative models such as Generative adversatial ne
 GANs learn to generate data from latent embeddings by training discrimators adversarially against generators. They are very successful at generating high-dimensional continuous data, especially at generating images. Although GANs can also be applied to 3D domain, their adversarial training is known to be very difficult and unstable.  
 
 #### Auto-Encoders
-<img align="right" src="https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AutoEncoder.png" width="150"/>
+<img align="right" src="https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AutoEncoder.png" width="200"/>
 
 Auto-encoders learn to predict latent embeddings from the original input data using an encoder neural network. With the predicted latent code, the decoder network learns to reconstuct the original input. Auto-Encoders, especially the VAEs, used very commonly in 3D deep learning. However, in many 3D representation learning applications, only the decoder part is used. A natural question is: Why training a large encoder network is necessary if we won't use it?
 
 #### Auto-Decoders
-<img align="left" src="Images/AutoDecoder.png" width="150"/>
+<img align="left" src="Images/AutoDecoder.png" width="200"/>
 
 An Auto-Decoder is an auto-encoder without an encoder. It learns latent codes and a decoder for representing the data. Authors claim this architecture is easier to train compared to GANs and VAEs, and do not contain the unnecessary encoder module seen in Auto-Encoders.
 
@@ -135,27 +135,78 @@ Above, the parameter 𝜹 controls the truncation distance, and `clamp(x, 𝜹) 
 Clearly, this approach is not feasible. Yes, using voxels were inefficient, but so does having a several-million parameter neural network trained for each shape! This brings us to the auto-decoder based formulation.
 
 ### SDFs as Auto-Decoders
-As noted before, DeepSDF can be seen as an auto-decoder. To be more specific, DeepSDF can be seen as a conditional auto-decoder. In this formulation, embedding vectors are latent codes, 3D points are conditions, and the neural network is the decoder. While a similar formulation is possible with other generative models, like GANs, authors chose to use an Auto-Decoder.  
 
-Here, we rather have an array of `X`s, while every `X` still is a shape with `(point, SDF(point))` pairs. We have a single neural network and a set of latent vector `z`s, one vector per shape. Using this training data, we optimize both latent vectors and neural network parameters using backpropagation and gradient descent.
+<p>
+<img src="Images/DeepSDF.png" align="right" width="400" />
+</p>
+
+As noted before, DeepSDF can be seen as an auto-decoder. To be more specific, DeepSDF can be seen as a conditional auto-decoder. In this formulation, embedding vectors are latent codes, 3D points are conditions, and the neural network is the decoder. While a similar formulation is possible with other generative models, like GANs, authors chose to use an Auto-Decoder.
+
+Here, we rather have an array of `X`s, while every `X` still is a shape with `(point, SDF(point))` pairs:
+
+![](Formulas/AutoDecoder/Data.png)
+
+We have a single neural network per shape category and a set of latent vector `z`s, one vector per shape. To formulate this as a gradient-based optimization problem, we need to take a probabilistic perspective. The joint probability distribution of embedding vectors (z) and data (X) can be written as:
+
+![](Formulas/AutoDecoder/Dist.png)
+
+In the above formula, note that the likelihood term (distribution of X given the latent vector) is parametized by 𝜃. We opt to optimize this joint distribution with 𝜃 and z, which is equivalent to maximum a posterior probability (MAP) estimation. One can assume this distribution is in the exponential form:
+
+![](Formulas/AutoDecoder/DistExp.png)
+
+This is the common form many continuous distributions have, such as [Gaussian](https://en.wikipedia.org/wiki/Normal_distribution) and [Laplacian](https://en.wikipedia.org/wiki/Laplace_distribution). Note the loss function `L` appears in the exponent, which is replaced by the loss function introduced in the previous section.
+
+We can now optimize the parameters 𝜃:
+
+![](Formulas/AutoDecoder/OptimParam.png)
+
+and also the embedding vectors z:
+
+![](Formulas/AutoDecoder/OptimZ.png)
+
+We can now pose this optimization problem as a joint optimization problem over the entire dataset:
+
+![](Formulas/AutoDecoder/Optim.png)
+
+Using this formulation, latent vectors and neural network parameters are optimized using backpropagation and gradient descent.
 
 The tricky situation here is to use this model at inference. If you have previous experience in embeddings used in natural language processing (NLP), you would note that the situation here is pretty different. In NLP, each embedding vector represents a discrete element (often a character or a word). Both training and test data in a particular language is a sequence of these discrete elements, and a finite vocabulary can be assumed. In the DeepSDF case, infinite possible instances of a category, we can have infinitely many different objects. We, therefore, cannot assume there is a finite vocabulary of possible objects.
 
-What instead can be done is to optimize a new latent vector of an upcoming shape. We freeze the network parameters, and simply using the fact that neural networks are differentiable with respect to their inputs, we optimize latent vectors using gradient-descent.
+What instead can be done is to optimize a new latent vector of an upcoming shape. We freeze the network parameters, and simply using the fact that neural networks are differentiable with respect to their inputs, we optimize latent vectors using gradient-descent:
+
+![](Formulas/AutoDecoder/InferZ.png)
 
 There are two very important points to make about the inference formulation. First, ground-truth point-sdf pairs are available in inference time as well! However, these ground-truth points are available only for a sample of points, and we want to obtain the continuous function for the whole shape. This detail is especially important for shape-completion, as we will see a little bit later. Second, inference requires an entire training process with multiple backward passes of the network. This makes the model very slow at inference, probably the biggest downside of the DeepSDF approach.
 
 ### Dataset Preparation
-Of course, having a model is not enough to do deep learning, we also need data! Similar to most other works in 3D deep learning, they use a Computer-Aided Design (CAD) model dataset to obtain clean 3D shapes. In particular, they use the ShapeNet dataset, one of the most popular CAD model datasets (together with ModelNet). They normalize shapes into the unit sphere and ensure all shapes have a canonical pose (there are no upside-down chairs!). This coordinate system should be kept in mind, several values including the truncation distance (0.1) and virtually all the performance metrics from now on will live in the unit sphere coordinate system!
+Of course, having a model is not enough to do deep learning, we also need data! Similar to most other works in 3D deep learning, they use a Computer-Aided Design (CAD) model dataset to obtain clean 3D shapes. In particular, they use the ShapeNet dataset, one of the most popular CAD model datasets (together with ModelNet). They normalize shapes into the unit sphere and ensure all shapes have a canonical pose (there are no upside-down chairs!). This coordinate system should be kept in mind, several values including the truncation distance (e.g. 0.1) and virtually all the performance metrics from now on will live in the unit sphere coordinate system!
 
-SDFs can be obtained from meshes, and as a synthetic dataset, ShapeNet consists of meshes. However, instead of using meshes, they sampled a lot of points from different viewpoints and sampled SDFs around them! It is ironic that they technically used a point-based representation for data preparation, but we should note that the task is sampling data, not rendering. Since authors want watertight (closed) surfaces being produced, they also employed a heuristic to eliminate non-watertight shapes. They do so by counting triangles whose different sides are observed from opposite views and eliminate the shapes where this count is large. This elimination is the major advantage of using a multi-view approach.
+![](Images/ShapeNet.png)
+*ShapeNet is a rich CAD model dataset with aligned objects from multiple categories*
+
+SDFs can be obtained from meshes, and as a synthetic dataset, ShapeNet consists of meshes. However, instead of using meshes, DeepSDF authors sampled a lot of points from different viewpoints and sampled SDFs around them! It is ironic that they technically used a point-based representation for data preparation, but we should note that the task is sampling data, not rendering. Having a discrete set of surface points is good to sample ground-truth SDF values, as one can simply sample other points and compute SDFs by finding the nearest surface point.
+
+Since authors want watertight (closed) surfaces being produced, they also employed a heuristic to eliminate non-watertight shapes. They do so by counting triangles whose different sides are observed from opposite views and eliminate the shapes where this count is large. This elimination is the major advantage of using a multi-view approach.
 
 ### Model and Training Details
-In most of their experiments, authors used an 8-layer Fully Connected Network with a residual connection from input to layer 4. They use standard ReLU activations, but not-so-standard weight normalization instead of more popular batch normalization. The advantage of weight normalization over batch normalization is that it doesn't correlate shapes with each other. Adam optimizer with standard parameters is used. The truncation parameter is set to 0.1, and latent vectors are initialized from a normal distribution with small variance (reportedly 0.001). Tanh activation is used to ensure outputs are normalized. Training took 8 hours on 8 GPUs.
+In most of their experiments, authors used an 8-layer Fully Connected Network (or MLP) with a residual connection from input to layer 4.
 
-The authors made various ablation studies to justify their decisions. They showed, for example, that the residual connection is crucial for the optimization process, by conveying overfitting experiments at different model sizes. 
+![](Images/MLP.png)
+*The deep MLP architecture used in DeepSDF. Tanh (TH) activation is used in the output to obtain normalized coordinates.*
 
-A very important ablation study that attracted my attention is the truncation parameter. One can see that larger truncation parameter values give worse results, as fewer resources are concentrated around the surfaces. In the end, shape representation is about representing surfaces. Clearly, though, we need to have a non-zero truncation distance for smoothness enabled by SDF representation. Hence, selected 0.1 is a good choice.
+Weight normalization instead of more popular batch normalization. The advantage of weight normalization over batch normalization is that it doesn't correlate different shapes with each other.
+
+Adam optimizer with standard parameters is used. The truncation parameter (𝜹) is set to 0.1, and latent vectors are initialized from a normal distribution with small variance (reportedly 0.001). `Tanh` activation is used to ensure outputs are normalized. Training took 8 hours on 8 GPUs.
+
+The authors made various ablation studies to justify their decisions. They showed, for example, that the residual connection is crucial for the optimization process, by conveying overfitting experiments at different model sizes.
+
+![](Images/Overfitting.png)
+*Optimization difficulty when overfitting to 500 chairs. The residual connection allows larger models to overfit.*
+
+A very important ablation study that attracted my attention is the truncation parameter (𝜹). One can see that larger truncation parameter values give worse results, as fewer resources are concentrated around the surfaces. In the end, shape representation is about representing surfaces. Clearly, though, we need to have a non-zero truncation distance for smoothness enabled by SDF representation. Hence, selected 0.1 is a good choice.
+
+![](Images/Truncation.png)
+*Authors peaked the mean performance in Chamfer Distance metric.*
 
 ## Experiments
 Let's now see some experimental results! Authors attacked three main tasks in this paper: 
