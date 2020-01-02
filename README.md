@@ -30,9 +30,8 @@ DeepSDF authors propose a novel generative model to represent continuous signed 
 
 At a high level, authors first define an embedding lookup, where each shape in a shape category has an embedding latent vector. They then train a single deep fully-connected neural network per shape category. The network takes the embedding vector and a 3D point as the input, and gives signed distance value as the output. New embedding vectors can be obtained for unknown shapes via interpolation or by optimizing for a new embedding vector.
 
-![]("https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/Architecture.png")
-
-*My rought sketch of the DeepSDF architecture. We have an Multi-Layer Perceptron (MLP) that is trained per shape category and a latent vector trained per shape. At inference, MLP takes a 3D point with the embedding and gives the SDF value.*
+![](Images/Architecture.png)
+*A basic sketch of the DeepSDF architecture. We have an Multi-Layer Perceptron (MLP) that is trained per shape category and a latent vector trained per shape. At inference, MLP takes a 3D point with the embedding and gives the SDF value.*
 
 DeepSDF allows training a single neural network per an entire database of shapes, in our case a database of shapes in a single category. Embedding vectors can be pretty small, like 128 or 256 dimensional. Even if shapes were represented as very small voxel grids of size 32x32x32, a single voxel grid would take up the space of 128 embeddings!
 
@@ -112,14 +111,28 @@ For shape completion, the authors compare their results with an architecture cal
 *3D-EPN architecture that completes the incomplete voxel grids.*
 
 ## Methodology
-In this section, I discuss the authors' mathematical formulation of SDFs as neural networks. As the authors did in the paper, I first start with the naive idea of training a neural network per SDF, and then study the re-formulation as a generative model. I also explain the data generation process, model and training details they used.
+In this section, I discuss the authors' mathematical formulation of SDFs as neural networks. As the authors do in the paper, I first start with the naive idea of training a neural network per SDF, and then study the re-formulation as a generative model. I also explain the data generation process, model and training details they use.
 
 ### SDFs as Neural Networks
 We want a neural network model (or simply a parametric function approximator) that can produce signed distance values for a given point. Here, let's forget about shape databases and consider we have a single shape `X`. Our dataset is sampled from this shape, as ground-truth `(point, SDF(point))` pairs. We can now basically overfit a neural network to this shape. The resulting neural network becomes our DeepSDF representation.
 
 DeepSDF technically learns a Truncated Signed Distance Function (TSDF). TSDF allows marking regions too far away from the surface as empty, making the SDF concentrate around the points in the surface, which are the ones that are important for rendering.
 
-Clearly, this approach is not feasible. Yes, using voxels were inefficient, but so does having a several-million parameter neural network trained for each shape! This brings us to our auto-decoder based formulation.
+Now, let's go over the mathematical formulation of the ideas.We have a single shape that can be seen as a dataset of point-sdf pairs:
+
+![](Formulas/MLP/Data.png)
+
+We want to approximate this dataset using a parametric function:
+
+![](Formulas/MLP/NN.png)
+
+We can do so by optimizing the following loss function:
+
+![](Formulas/MLP/Loss.png)
+
+Above, the parameter 𝜹 controls the truncation distance, and `clamp(x, 𝜹) = min(𝜹, max(-𝜹, x))`. We can optimize parameters 𝜃 using gradient descent.
+
+Clearly, this approach is not feasible. Yes, using voxels were inefficient, but so does having a several-million parameter neural network trained for each shape! This brings us to the auto-decoder based formulation.
 
 ### SDFs as Auto-Decoders
 As noted before, DeepSDF can be seen as an auto-decoder. To be more specific, DeepSDF can be seen as a conditional auto-decoder. In this formulation, embedding vectors are latent codes, 3D points are conditions, and the neural network is the decoder. While a similar formulation is possible with other generative models, like GANs, authors chose to use an Auto-Decoder.  
