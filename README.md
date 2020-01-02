@@ -205,7 +205,7 @@ The authors made various ablation studies to justify their decisions. They showe
 
 A very important ablation study that attracted my attention is the truncation parameter (𝜹). One can see that larger truncation parameter values give worse results, as fewer resources are concentrated around the surfaces. In the end, shape representation is about representing surfaces. Clearly, though, we need to have a non-zero truncation distance for smoothness enabled by SDF representation. Hence, selected 0.1 is a good choice.
 
-![](Images/Truncation.png)
+![](Images/TruncationDistance.png)
 *Authors peaked the mean performance in Chamfer Distance metric.*
 
 ## Experiments
