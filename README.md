@@ -213,14 +213,33 @@ Let's now see some experimental results! Authors attacked three main tasks in th
 1) Representing known shapes
 2) representing unknown shapes
 3) Shape completion. 
-These tasks are quantitatively measurable. The quantitative results are compared against the baseline models I introduced in the related work section. 
+These tasks are quantitatively measurable. The quantitative results are compared against the baseline models introduced in the related work section. 
 
 Apart from how DeepSDF scores, I also opt to discuss two other important experiments in this post. The first one is that the quantitative results that show latent codes can be interpolated to obtain new shapes, something you see in all embedding papers. The second one is how noise effect the model performance, which I think is more interesting!
+
+### Performance Metrics
+Before delving deep into experiments, I first want to introduce the evaluation metrics used in the paper. Beside their use in the paper, these metrics are relevant for a wide variety of shape completion tasks, so it's beneficial to learn what they are.
+
+#### Chamfer Distance(CD)
+Chamfer Distance is the most frequently used metric in this paper. It is defined over two discrete set of points defined over two surfaces S1 and S2. Its formula is given by:
+![](Formulas/Metrics/Chamfer.png)
+
+Chamfer Distance can be viewed as a bidirectional nearest neighbor computation. We first sum distance of each point in the surface S2 to its nearest neighbor in the surface S1, and then sum the distance of each point in S1 to its nearest neighbor in S2. 
+
+Although CD is [symmetric](https://en.wikipedia.org/wiki/Symmetric_function), it is not a valid distance function as it does not satisfy [the triangle inequality](https://en.wikipedia.org/wiki/Triangle_inequality). Although it is a very useful, one should keep this in mind!
+
+In this paper, CD is used with a sample of 30k points, and computed in `O(nlogn)` using [`KDTree`](http://pointclouds.org/documentation/tutorials/kdtree_search.php). It is also normalized, i.e. the sum given in the formula is divided by the number of points.
+
+#### Earth Mover's Distance (EMD)
+Earth Mover's Distance, or Wasserstein's Distance, is defined over equal-size point sets on surfaces S1 and S2 as:
+![](Formulas/Metrics/EMD.png)
+ 
+
 
 ### Representing Known Shapes
 Technically, we don't have to use neural networks for machine learning. They are simply nonlinear function approximator. Anywhere we need to approximate a function, we can use them! Representing known shapes is a non-learning task, where we address compression of a known shape database. 3D data are complex, so this overfitting task is still very difficult.
 
-Here, what authors did is to directly follow the auto-decoder based training formulation. They optimize one latent vector per shape and a network for shape category. They then reconstruct surfaces using their trained models and embeddings, reporting better scores in Chamfer and Earth Mover's Distance metrics compared to baseline models.
+Here, what authors do is to directly follow the auto-decoder based training formulation. They optimize one latent vector per shape and a network for shape category. They then reconstruct surfaces using their trained models and embeddings, reporting better scores in Chamfer and Earth Mover's Distance metrics compared to baseline models.
 
 ### Representing Unknown Shapes
 And now, we do actual learning! We have the same training method in the previous section, but this time we don't know the shape embeddings. Therefore, we just optimize the shape embeddings at inference. We train an Adam optimizer similar to training, but by freezing network parameters and only optimizing the latent vectors. The inference is very slow, but again DeepSDF outperforms the baseline models.
