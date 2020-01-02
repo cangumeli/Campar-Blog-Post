@@ -236,8 +236,12 @@ The approach the authors used for shape completion naturally follows the inferen
 
 In quantitative metrics, DeepSDF outperforms the 3D-EPN baseline. This can also be seen qualitatively in the selected sample shapes the authors have shown.
 
-### Quantitative Results on Embeddings
+### Qualitative Results on Embeddings
 As in all embedding papers, authors show their embeddings can be interpolated linearly. An automobile is the average of a pickup and an SUV, and averaging wooden chair and a single-person sofa create a chair whose sides a closed like a sofa.
+
+![](Images/Interp.png)
+
+*Embedding vectors can be interpolated linearly to create new shapes*
 
 ### Effect of Noise
 Although authors chose the discuss the effect of noise in the supplementary section, I think this is something very important in terms of generalization capabilities of the model.
