@@ -56,7 +56,7 @@ Polygonal Meshes represent shapes as groups of points that form polygons on the 
 
 In the world of meshes, one related work very similar to DeepSDF approach is AltasNet. This work also uses embeddings and shared neural networks per category. The standard AtlasNet first parameterizes 2D squares, and then deform them into 3D rectangles. Combining many of those squares, a 3D quad-mesh is obtained. A sketch of the model architecture is seen below:
 
-![AtlasNet architecture](AtlasNet.png)
+![AtlasNet architecture](Images/AtlasNet.png)
 
 The aforementioned square-based AtlasNet approach cannot create closed surfaces. This is because combinint many local deformed squares do not give any global completeness guarantees. To address this problem, they also define a version that deforms a parametric sphere. This version drops some fine details, but it can create closed surfaces.
 
