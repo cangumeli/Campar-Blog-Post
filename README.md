@@ -5,7 +5,7 @@
 Representing 3D shapes is an open problem in 3D computer vision and computer graphics. A good 3D shape representation should be suitable for rendering, 3D reconstruction, object recognition, and many others. It should be memory efficient and computationally efficient while allowing us to get quantitative results. 
 
 ![](https://www.3hatscommunications.com/wp-content/uploads/2016/10/what-do-i-choose-too-many-options.png)
-![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/Representations.png)
+![](Images/Representations.png)
 *There are many options to represent 3D data.*
 
 In this post, I discuss DeepSDF, a method for learning a 3D shape representation method (signed distance functions) using a neural network. Using a fully continous representation, DeepSDF is able to represent structured 3D data much more efficiently than available discretized methods such as voxel-grid, without discretization errors. Unlike the compact surface representations, like meshes and point clouds, DeepSDF has the accuracy and structure of the grid representations.
@@ -14,6 +14,10 @@ In this post, I discuss DeepSDF, a method for learning a 3D shape representation
 
 Let's start with what a signed distance function (SDF) is. It is a function that takes a point (a 3D point in our case) and gives its signed distance to the closest surface. The sign of this distance is `+` if the point is inside the surface, `-` otherwise. The surface is the region where the function takes the value `0`, also known as the zero level-set. Note that in shape representation, we assume the shape is a single closed (watertight) surface.
 
+![](Images/SDF.png)
+
+*Signed distance functions represent surfaces as a 0-level-set of a function*
+
 Signed-distance functions can represent surfaces smoothly. If we consider two points, one with `+` and one with `-` signed distance, we can locate a point in the surface by computing their weighted average. Sampling multiple points near the surface, we can obtain a set of very precise locations for surface points. Rendering can be done with well-known algorithms, such as ray-casting and marching cubes. Last, but not least, some open-source software is available to reconstruct SDFs from depth image sequences obtained from commodity sensors.
 
 ### DeepSDF Motivations
@@ -21,11 +25,14 @@ SDFs are awesome! However, to be used in practical applications, they need to be
 
 DeepSDF people instead suggest learning the SDFs with a neural network. An SDF looks a lot like a nonlinear binary classifier, and neural networks are very good nonlinear classifiers!
 
-
 ### DeepSDF Contribution
 DeepSDF authors propose a novel generative model to represent continuous signed distance functions. They show this model outperforms strong baselines in several shape representation challenges. In this section, I give high-level description of their main contributions. Further details will be given in the`Methodology` section.
 
 At a high level, authors first define an embedding lookup, where each shape in a shape category has an embedding latent vector. They then train a single deep fully-connected neural network per shape category. The network takes the embedding vector and a 3D point as the input, and gives signed distance value as the output. New embedding vectors can be obtained for unknown shapes via interpolation or by optimizing for a new embedding vector.
+
+![]("https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/Architecture.png")
+
+*My rought sketch of the DeepSDF architecture. We have an Multi-Layer Perceptron (MLP) that is trained per shape category and a latent vector trained per shape. At inference, MLP takes a 3D point with the embedding and gives the SDF value.*
 
 DeepSDF allows training a single neural network per an entire database of shapes, in our case a database of shapes in a single category. Embedding vectors can be pretty small, like 128 or 256 dimensional. Even if shapes were represented as very small voxel grids of size 32x32x32, a single voxel grid would take up the space of 128 embeddings!
 
