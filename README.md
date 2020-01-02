@@ -2,13 +2,19 @@
 
 ## Introduction
 
-Representing 3D shapes is an open problem in 3D computer vision and computer graphics. A good 3D shape representation should be suitable for rendering, 3D reconstruction, object recognition, and many others. It should be memory efficient and computationally efficient while allowing us to get quantitative results. In this post, I discuss DeepSDF, a method for learning a 3D shape representation method (signed distance functions) using a neural network.
+Representing 3D shapes is an open problem in 3D computer vision and computer graphics. A good 3D shape representation should be suitable for rendering, 3D reconstruction, object recognition, and many others. It should be memory efficient and computationally efficient while allowing us to get quantitative results. 
+
+![](https://www.3hatscommunications.com/wp-content/uploads/2016/10/what-do-i-choose-too-many-options.png)
+![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/Representations.png)
+*There are many options to represent 3D data.*
+
+In this post, I discuss DeepSDF, a method for learning a 3D shape representation method (signed distance functions) using a neural network. Using a fully continous representation, DeepSDF is able to represent structured 3D data much more efficiently than available discretized methods such as voxel-grid, without discretization errors. Unlike the compact surface representations, like meshes and point clouds, DeepSDF has the accuracy and structure of the grid representations.
 
 ### What is a Signed Distance Function (SDF)?
 
-Let's start with what a signed distance function (SDF) is. It is a function that takes a point (a 3D point in our case) and gives its signed distance to the closest surface. The sign of this distance is `+` if the point is inside the surface, `-` otherwise. Note that in shape representation, we assume the shape is a single closed surface.
+Let's start with what a signed distance function (SDF) is. It is a function that takes a point (a 3D point in our case) and gives its signed distance to the closest surface. The sign of this distance is `+` if the point is inside the surface, `-` otherwise. The surface is the region where the function takes the value `0`, also known as the zero level-set. Note that in shape representation, we assume the shape is a single closed (watertight) surface.
 
-Signed-distance functions can represent surfaces smoothly. If we consider two points, one with `+` and one with `-` signed distance, we can locate a point by their weighted average. Sampling many points near the surface, we can obtain a set of very precise locations for surface points. Rendering can be done with well-known algorithms, such as ray-casting and marching cubes. Last, but not least, some open-source software is available to reconstruct SDFs from depth images.
+Signed-distance functions can represent surfaces smoothly. If we consider two points, one with `+` and one with `-` signed distance, we can locate a point in the surface by computing their weighted average. Sampling multiple points near the surface, we can obtain a set of very precise locations for surface points. Rendering can be done with well-known algorithms, such as ray-casting and marching cubes. Last, but not least, some open-source software is available to reconstruct SDFs from depth image sequences obtained from commodity sensors.
 
 ### DeepSDF Motivations
 SDFs are awesome! However, to be used in practical applications, they need to be stored as voxels (3D images). Voxels are very inefficient in terms of disk space, memory use and computation. Therefore, we have to discretize too much for efficiency, at the expense of losing accuracy.
