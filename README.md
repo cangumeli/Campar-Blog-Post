@@ -17,9 +17,11 @@ DeepSDF people instead suggest learning the SDFs with a neural network. An SDF l
 
 
 ### DeepSDF Contribution
-At a high level,  authors first define an embedding lookup, where each shape in a shape category has an embedding latent vector. They then train a single deep fully-connected neural network per shape category. The network takes the embedding vector and a 3D point as the input, and gives signed distance value as the output. New embedding vectors can be obtained for unknown shapes via interpolation or by optimizing for a new embedding vector.
+DeepSDF authors propose a novel generative model to represent continuous signed distance functions. They show this model outperforms strong baselines in several shape representation challenges. In this section, I give high-level description of their main contributions. Further details will be given in the`Methodology` section.
 
-DeepSDF allows training a single neural network per an entire database of shapes, in our case a database of shapes in a single category. Embedding vectors can be pretty small, like 128 or 256 dimensional. Event if shapes were represented as very small voxel grids of size 32x32x32, a single voxel grid would take up the space of 128 embeddings!
+At a high level, authors first define an embedding lookup, where each shape in a shape category has an embedding latent vector. They then train a single deep fully-connected neural network per shape category. The network takes the embedding vector and a 3D point as the input, and gives signed distance value as the output. New embedding vectors can be obtained for unknown shapes via interpolation or by optimizing for a new embedding vector.
+
+DeepSDF allows training a single neural network per an entire database of shapes, in our case a database of shapes in a single category. Embedding vectors can be pretty small, like 128 or 256 dimensional. Even if shapes were represented as very small voxel grids of size 32x32x32, a single voxel grid would take up the space of 128 embeddings!
 
 The authors address three problems using their models. First, they try to compress a known category of shapes, measuring the accuracy of reconstruction using the shared neural network and small embeddings. Then, they address the same problem with unknown shapes to assess the learning capability of their model. Third, they attack the problem of shape completion, which is, as we will see, a very natural extension of the DeepSDF framework.
 
@@ -34,42 +36,75 @@ Previously, we discussed there are many alternatives for representing 3D shapes.
 Authors think three lines of work in shape representation is relevant. Namely point-based, mesh-based, and voxel-based ones.
 
 #### Point-Based
-Point Cloud is one of the most popular representations used in 3D. They define shapes as an unordered set of 3D points on the surface. In modern depth sensors (LiDARs, Kinect, etc.), point clouds are raw format obtained from sensors.
 
-Recently, there is a hype around using them with neural networks, especially in 3D recognition. In this line of works, people can reach their goals by using a sparse set of point clouds (usually 1k to 4k points). At this common scale, point clouds are computationally efficient and compact.
+<p align="left" >
+<img align="left" src="http://sayef.tech/uploads/dynamic-graph-cnn/point-cloud-torus.png" width="200" />
+</p>
 
-The downside of point clouds is that their lack of topology information. We have a bunch of points without any information on how these points are related to others. For rendering, we may require a lot of points (100k or so per shape in my own experience) for this reason. Moreover, the authors claim point clouds are not suitable for generating closed (watertight) surfaces.
+Point clouds are one of the most popular data formats used in 3D. Point clouds represent shapes as unordered sets of 3D points on the surface. Very ofen, they are the raw data format obtained from modern depth sensors (LiDARs, Kinect, etc.). Image in the left shows [an example point cloud of a torus object](http://sayef.tech/uploads/dynamic-graph-cnn/point-cloud-torus.png).
+
+Recently, there is a hype around using them with neural networks, especially in 3D recognition. In this line of works, people can reach good performance by using a sparse set of points (usually 1k to 4k points). At this common scale, point clouds are computationally efficient and compact.
+
+The downside of point clouds is the lack of topology information. We have a bunch of points without any information on how these points are related to each other! For rendering point clouds at a reasonable resolution, we may require a lot of points (100k or more per shape in my experience). Moreover, the authors claim point clouds are not suitable for generating closed (watertight) surfaces.
 
 #### Mesh-based
-Polygonal Meshes represent shapes as groups of points that form polygons on the surface. A triangular mesh is the default data format used for rendering in modern graphics hardware, and much more efficient than point clouds in this use case. Synthetic 3D models created by artists are often in mesh format by default.
+<p >
+  <img align="right" src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Dolphin_triangle_mesh.png" width="200" />
+</p>
 
-In the world of meshes, one related work very similar to DeepSDF approach is AltasNet. This work also uses embeddings and shared neural networks per category. They parameterize squares in 2D and then deform them into 3D rectangles, obtaining a quad mesh.
+Polygonal Meshes represent shapes as groups of points that form polygons on the surface. A triangular mesh is the default data format used for rendering in modern graphics hardware, and much more efficient than point clouds in this use case. Synthetic 3D models created by artists are often in mesh format by default. On the right, you see [an example mesh that models a dolphin](https://en.wikipedia.org/wiki/Polygon_mesh).
 
-The aforementioned square-based AtlasNet approach cannot create closed surfaces, so they also define a version that deforms a parametric sphere. This version drops some fine details but can represent closed surfaces.
+In the world of meshes, one related work very similar to DeepSDF approach is AltasNet. This work also uses embeddings and shared neural networks per category. The standard AtlasNet first parameterizes 2D squares, and then deform them into 3D rectangles. Combining many of those squares, a 3D quad-mesh is obtained. A sketch of the model architecture is seen below:
+
+![AtlasNet architecture](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AtlasNet.png)
+
+The aforementioned square-based AtlasNet approach cannot create closed surfaces. This is because combinint many local deformed squares do not give any global completeness guarantees. To address this problem, they also define a version that deforms a parametric sphere. This version drops some fine details, but it can create closed surfaces.
 
 #### Voxel-based
-Voxels are basically 3D images. Instead of having pixels in each point of a 2D grid, we have a voxel in each point of a 3D grid. Voxels can be used to represent different data formats (including SDFs) as a function of discretized 3D grid coordinates.
 
-Voxels are super-easy to work with using neural networks! Just replace all `Conv2D` and `BatchNorm2D` layers with `Conv3D` and `BatchNorm3D` layers (and all others end with 2D with 3D) and you have the architecture! The problem is their inefficiency. In 3D shapes, surfaces are often quadratic while volumes are often cubic (compare volume vs. area formula of cube and sphere). As we increase the voxel resolution, memory use increases faster than the number of voxels on the surface. Since surfaces are what we are most interested in, voxels are wasteful.
+Voxels are simply 3D images. Instead of having pixels at each point of a 2D grid, we have a voxel at each point of a 3D grid. Voxels can be used to represent different data formats (including SDFs) as a function of discretized 3D grid coordinates.
 
-One important related work in voxels is OGN, the Octree-generating network. OGN uses a hierarchical data representation for voxels called Octrees to generate shapes. OGN predicts both the structure and content of an octree with a convolutional neural network to represent shapes.
+Voxels are super-easy to work with using neural networks! Just replace all `Conv2D` and `BatchNorm2D` layers with `Conv3D` and `BatchNorm3D` layers (and all others end with 2D with 3D) and you have the architecture! The problem is their inefficiency. In 3D shapes, surfaces are often quadratic while volumes are often cubic (compare volume vs. area formula of cube and sphere). As we increase the voxel resolution, memory use increases faster than the number of voxels on the surface. Since surfaces are what we are most interested in, voxels waste our resources.
+
+One important related work in voxel-based shape representation is the Octree-generating network(OGN). OGN uses a hierarchical data representation called Octrees to generate shapes. OGN predicts both the structure and content of an octree with a convolutional neural network. Octrees can assign more voxels to more complex regions (e.g. face of a human), and less voxels to simple regions (e.g. backgroud). This adaptive resolution allow OGN to process high-resolution voxel grids efficiently.
+
+![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/OGN2.png)
+*OGN makes prediction at multiple resolutions recursively.*
+
+![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/OGN.png)
+*OGN learns the octree structure, using grount-truth structure at multiple resolutions.*
 
 ### Generative Models
-When it comes to popularity, generative models GANs and VAEs are very big. Here, the authors point out their architecture is a special kind of generative model, called Auto-Decoder.
+When it comes to popularity, generative models such as Generative adversatial networks ( GANs ) and variational auto-encoders (VAEs) are very big. Here, the authors point out their architecture is a special kind of generative model, called Auto-Decoder. Authors considered GANs and Auto-Encoders in addition to Auto-Decoder approach they chose to ground their decision.
 
-An Auto-Decoder is an auto-encoder without an encoder. It learns latent codes and a decoder for representing the data. Authors claim this architecture is easier to train compared to GANs and VAEs. They also ask why the encoder part is necessary if we just need the decoder for the task in hand.
+#### Generative Adversarial Networks
+GANs learn to generate data from latent embeddings by training discrimators adversarially against generators. They are very successful at generating high-dimensional continuous data, especially at generating images. Although GANs can also be applied to 3D domain, their adversarial training is known to be very difficult and unstable.  
+
+#### Auto-Encoders
+<img align="right" src="https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AutoEncoder.png" width="150"/>
+
+Auto-encoders learn to predict latent embeddings from the original input data using an encoder neural network. With the predicted latent code, the decoder network learns to reconstuct the original input. Auto-Encoders, especially the VAEs, used very commonly in 3D deep learning. However, in many 3D representation learning applications, only the decoder part is used. A natural question is: Why training a large encoder network is necessary if we won't use it?
+
+#### Auto-Decoders
+<img align="left" src="https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/AutoDecoder.png" width="150"/>
+
+An Auto-Decoder is an auto-encoder without an encoder. It learns latent codes and a decoder for representing the data. Authors claim this architecture is easier to train compared to GANs and VAEs, and do not contain the unnecessary encoder module seen in Auto-Encoders.
+
+The latent code learning can be understood as an `embedding_lookup` function that exits in many common deep learning software. We have an embedding vector for each data point, each element of whom is initialized and learned as a model parameter.
 
 ### Shape Completion
 For shape completion, the authors compare their results with an architecture called 3D-EPN. This architecture predicts a coarse, low-resolution voxel grid from an incomplete one. Then, they increase this resolution by retrieving and using reference shapes. Another significance of this approach is that it uses SDFs in the voxel form.
 
+![](https://github.com/cangumeli/Campar-Blog-Post/blob/master/Images/3DEPN.png)
+*3D-EPN architecture that completes the incomplete voxel grids.*
 
 ## Methodology
 In this section, I discuss the authors' mathematical formulation of SDFs as neural networks. As the authors did in the paper, I first start with the naive idea of training a neural network per SDF, and then study the re-formulation as a generative model. I also explain the data generation process, model and training details they used.
 
 ### SDFs as Neural Networks
-We want a neural network model (or simply a parametric function approximator) that can produce signed distance values for a given point. Here, let's forget about shape databases and consider we have a single shape `X`. Our dataset is sampled from this shape, as ground-truth `<point, SDF(point)>` pairs. We can now basically overfit a neural network to this shape. The resulting neural network becomes our DeepSDF representation.
+We want a neural network model (or simply a parametric function approximator) that can produce signed distance values for a given point. Here, let's forget about shape databases and consider we have a single shape `X`. Our dataset is sampled from this shape, as ground-truth `(point, SDF(point))` pairs. We can now basically overfit a neural network to this shape. The resulting neural network becomes our DeepSDF representation.
 
-Another important detail to note is DeepSDF technically learns a Truncated Signed Distance Function (TSDF). TSDF allows marking regions too far away from the surface as empty, making the SDF concentrate around the points in the surface, which are the ones that are important for rendering.
+DeepSDF technically learns a Truncated Signed Distance Function (TSDF). TSDF allows marking regions too far away from the surface as empty, making the SDF concentrate around the points in the surface, which are the ones that are important for rendering.
 
 Clearly, this approach is not feasible. Yes, using voxels were inefficient, but so does having a several-million parameter neural network trained for each shape! This brings us to our auto-decoder based formulation.
 
