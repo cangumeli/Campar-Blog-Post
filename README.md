@@ -10,6 +10,8 @@ Representing 3D shapes is an open problem in 3D computer vision and computer gra
 
 In this post, I discuss DeepSDF, a method for learning a 3D shape representation method (signed distance functions) using a neural network. Using a fully continous representation, DeepSDF is able to represent structured 3D data much more efficiently than available discretized methods such as voxel-grid, without discretization errors. Unlike the compact surface representations, like meshes and point clouds, DeepSDF has the accuracy and structure of the grid representations.
 
+DeepSDF paper came from Facebook Reality Lab Researchers Jeong Joon Park, Peter Florence, Julian Straub, Richard Newcombe, Steven Lovegrove.
+
 ### What is a Signed Distance Function (SDF)?
 
 Let's start with what a signed distance function (SDF) is. It is a function that takes a point (a 3D point in our case) and gives its signed distance to the closest surface. The sign of this distance is `+` if the point is inside the surface, `-` otherwise. The surface is the region where the function takes the value `0`, also known as the zero level-set. Note that in shape representation, we assume the shape is a single closed (watertight) surface.
