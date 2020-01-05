@@ -84,7 +84,7 @@ Voxels are super-easy to work with using neural networks! Just replace all `Conv
 One important related work in voxel-based shape representation is the Octree-generating network(OGN) [<a href="#c3">3</a>]. OGN uses a hierarchical data representation called Octrees to generate shapes. OGN predicts both the structure and content of an octree with a convolutional neural network. Octrees can assign more voxels to more complex regions (e.g. the face of a human), and fewer voxels to simple regions (e.g. background). This adaptive resolution allows OGN to process high-resolution voxel grids efficiently.
 
 <p>
- <img src="Images/OGN2.png" height="170">
+ <img src="Images/OGN2.png" height="180">
  <br>
  <em>OGN makes prediction at multiple resolutions recursively [<a href="#c3">3</a>].</em>
 </p>
@@ -153,33 +153,33 @@ As noted before, DeepSDF can be seen as an auto-decoder. To be more specific, De
 
 Here, we rather have an array of `X`s, while every `X` still is a shape with `(point, SDF(point))` pairs:
 
-<img height="35" src="Formulas/AutoDecoder/Data.png"/>
+<img height="40" src="Formulas/AutoDecoder/Data.png"/>
 
 We have a single neural network per shape category and a set of latent vector `z`s, one vector per shape. To formulate this as a gradient-based optimization problem, we need to take a probabilistic perspective. The joint probability distribution of embedding vectors (`z`) and data (`X`) can be written as:
 
-<img height="33" src="Formulas/AutoDecoder/Dist.png" />
+<img height="37" src="Formulas/AutoDecoder/Dist.png" />
 
 In the above formula, note that the likelihood term (distribution of `X` given the latent vector) is parameterized by `𝜃`. As our data consist of points and sdf values distributed independently, we can write the likelihood as a multiplication of point probabilities:
 
-<img height="50" src="Formulas/AutoDecoder/Prob.png"/>
+<img height="54" src="Formulas/AutoDecoder/Prob.png"/>
 
 One can assume distribution is in the exponential form:
 
-<img height="45" src="Formulas/AutoDecoder/DistExp.png"/>
+<img height="49" src="Formulas/AutoDecoder/DistExp.png"/>
 
 This is the common form many continuous distributions have, such as [Gaussian](https://en.wikipedia.org/wiki/Normal_distribution) and [Laplacian](https://en.wikipedia.org/wiki/Laplace_distribution). Note the loss function `L` appears in the exponent, which is replaced by the loss function introduced in the previous section.
 
 We opt to optimize this joint distribution with `𝜃` and `z`, which is equivalent to maximum a posterior probability (MAP) estimation. Using lop probabilities, we can now optimize the parameters `𝜃`:
 
-<img height="105" src="Formulas/AutoDecoder/OptimParam.png"/>
+<img height="109" src="Formulas/AutoDecoder/OptimParam.png"/>
 
 and also the embedding vectors `z`:
 
-<img height="42" src="Formulas/AutoDecoder/OptimZ.png"/>
+<img height="46" src="Formulas/AutoDecoder/OptimZ.png"/>
 
 We can now pose a joint optimization problem over the entire dataset:
 
-<img height="75" src="Formulas/AutoDecoder/Optim.png"/>
+<img height="79" src="Formulas/AutoDecoder/Optim.png"/>
 
 Note we assumed a Gaussian prior distribution over `z`. Using this formulation, latent vectors and neural network parameters are optimized using backpropagation and gradient descent.
 
@@ -187,7 +187,7 @@ The tricky situation here is to use this model at inference. If you have previou
 
 What instead can be done is to optimize a new latent vector for the unknown shape. We freeze the network parameters. Using the fact that neural networks are differentiable with respect to their inputs, we optimize latent vectors using gradient-descent:
 
-<img height="66" src="Formulas/AutoDecoder/InferZ.png"/>
+<img height="70" src="Formulas/AutoDecoder/InferZ.png"/>
 
 There are two very important points to make about the inference formula. First, ground-truth point-sdf pairs are available in inference time as well! However, these ground-truth points are available only for a sample of points, and we want to obtain the continuous function for the whole shape. Second, inference requires an entire training process with multiple backward passes of the network. This makes the model very slow at inference, probably the biggest downside of the DeepSDF approach.
 
@@ -214,7 +214,7 @@ Adam optimizer [<a href="#c8">8</a>] with standard parameters is used. The trunc
 The authors made various ablation studies to justify their decisions. They showed, for example, that the residual connection is crucial for the optimization process, by conveying overfitting experiments at different model sizes.
 
 <p>
-<img width="400" src="Images/Overfitting.png"/>
+<img width="450" src="Images/Overfitting.png"/>
 <br>
 <em>Optimization difficulty when overfitting to 500 chairs. The residual connection allows larger models to overfit [<a href="#c1">1</a>].</em>
 </p>
@@ -222,7 +222,7 @@ The authors made various ablation studies to justify their decisions. They showe
 A very important ablation study that attracted my attention is the truncation parameter. One can see that larger truncation parameter values give worse results, as fewer resources are concentrated around the surfaces. In the end, shape representation is about representing surfaces. Clearly, though, we need to have a non-zero truncation distance for smoothness enabled by SDF representation. Hence, the selected `0.1` is a good choice.
 
 <p>
-<img width="400" src="Images/TruncationDistance.png"/>
+<img width="450" src="Images/TruncationDistance.png"/>
 <br>
 <em>Effect of truncation distance when overfitting to 100 cars [<a href="#c1">1</a>].</em>
 </p>
@@ -243,7 +243,8 @@ Before delving deep into experiments, I first want to introduce the evaluation m
 
 #### Chamfer Distance(CD)
 Chamfer Distance is the most frequently used metric in this paper. It is defined over two discrete sets of points defined over two surfaces `S1` and `S2`. Its formula is given by:
-<img height="70" src="Formulas/Metrics/Chamfer.png"/>
+
+<img height="75" src="Formulas/Metrics/Chamfer.png"/>
 
 Chamfer Distance can be viewed as a bidirectional nearest neighbor computation. We first sum distance of each point in the surface `S2` to its nearest neighbor in the surface `S1` and then sum the distance of each point in `S1` to its nearest neighbor in `S2`. 
 
@@ -254,7 +255,7 @@ In this paper, CD is used with a sample of 30k points and computed in `O(nlogn)`
 #### Earth Mover's Distance (EMD)
 Earth Mover's Distance, or Wasserstein's Distance, is defined over equal-size point sets on surfaces `S1` and `S2` as:
 
-<img height="72" src="Formulas/Metrics/EMD.png"/>
+<img height="75" src="Formulas/Metrics/EMD.png"/>
  
 Intuitively, EMD is the minimum amount of total change we have to make to move all points in `S1` to `S2`. Computing the EMD is an instance of the commonly known transportation problem, a common problem studied in linear programming literature. See [this](http://infolab.stanford.edu/pub/cstr/reports/cs/tr/99/1620/CS-TR-99-1620.ch4.pdf) lecture notes for further details.
 
@@ -271,7 +272,7 @@ This metric should be used in conjunction with mesh accuracy. We simply compute 
 #### Mesh Cosine Similarity
 If you studied computer graphics, you know that faces in a mesh also have normal vectors. Mesh Cosine Similarity compares normal vectors of the generated mesh with the ground-truth normal vectors (obtained from the ground-truth mesh). Its formula is:
 
-<img height="65" src="Formulas/Metrics/Cosine.png"/>
+<img height="70" src="Formulas/Metrics/Cosine.png"/>
 
 ### How They Evaluate?
 For quantitative evaluations, they obtain a voxel grid of size `512x512x512` by evaluating SDF on a spatial grid. They then used Marching Cubes[<a href="#c12">12</a>] algorithm to create an output mesh. For quantitative renderings, they directly rendered from the continuous representation using Ray Casting. ShapeNet version 2 is used for shape representation experiments, while version 1 is used for shape completion to be comparable with the 3D-EPN baseline.
@@ -279,9 +280,9 @@ For quantitative evaluations, they obtain a voxel grid of size `512x512x512` by 
 ### Representing Known Shapes
 Technically, we don't have to use neural networks for machine learning. They are simply nonlinear function approximators. Anywhere we need to approximate a function, we can use them! Representing known shapes is a non-learning task, where we address compression of a known shape database. 3D data are complex, so this overfitting task is still very difficult.
 
-<img width="350" src="Images/ResultTables/Known.png"/>
+<img width="450" src="Images/ResultTables/Known.png"/>
 
-*DeepSDF outperforms AtlasNet, AtlasNet Sphere and OGN when overfitting to known shapes*
+*DeepSDF outperforms AtlasNet, AtlasNet Sphere and OGN when overfitting to known shapes.*
 
 Here, what authors do is to directly follow the auto-decoder based training formulation. They optimize one latent vector per shape and a network per shape category. They then reconstruct surfaces using their trained models and embeddings, reporting better scores in CD and EMD metrics compared to baseline models. They use a latent vector size of 256.
 
@@ -289,7 +290,7 @@ Here, what authors do is to directly follow the auto-decoder based training form
 And now, we do actual learning! We have the same training method in the previous section, but this time we don't know the shape embeddings. Therefore, we just optimize the shape embeddings at inference. We train an Adam optimizer similar to training, but by freezing network parameters and only optimizing the latent vectors. Again DeepSDF outperforms the baseline models in EMD and CD metrics. The latent vector size is again 256.
 
 <p>
-<img width="400" src="Images/ResultTables/Unknown.png" />
+<img width="500" src="Images/ResultTables/Unknown.png" />
 <br>
 <em>DeepSDF outperforms baseline methods when learning a new latent code for unknown shapes [<a href="#c1">1</a>].</em>
 </p>
@@ -299,7 +300,7 @@ And now, we do actual learning! We have the same training method in the previous
 
 One very weird detail we have here is that we assume we have some ground-truth samples of SDF values for the shape! They basically show latent code can represent a continuous SDF from discrete samples, and a new latent code can be obtained from these discrete samples. We can see that by looking back to the inference formula:
 
-<img height="62" src="Formulas/AutoDecoder/InferZ.png" />
+<img height="70" src="Formulas/AutoDecoder/InferZ.png" />
 
 Is this really learning or do we still overfit? It depends on your viewpoint.
 
@@ -313,7 +314,7 @@ The approach the authors used for shape completion naturally follows the inferen
 DeepSDF outperforms the 3D-EPN baseline in CD, EMD, and mesh-based metrics. This superiority can also be seen qualitatively in the selected sample shapes the authors have shown.
 
 <p>
-<img width="400" src="Images/ResultTables/Completion.png"/>
+<img width="500" src="Images/ResultTables/Completion.png"/>
 <br>
 <em>DeepSDF [<a href="#c1">1</a>] outperforms 3D-EPN [<a href="#c4">4</a>] baseline</em>
 </p>
@@ -334,7 +335,7 @@ Although the authors chose the discuss the effect of noise in the supplementary 
 For assessing the effect of noise, authors picked the shape completion task and they injected Gaussian noise to depth maps. With an increasing standard deviation, the depth maps divergence from the correct shape is faster than the divergence of DeepSDF-generated shapes. That is, the DeepSDF can still produce high-quality shapes even if the noise corrupted the depth maps significantly. This is a very interesting result!
 
 <p>
-<img width="400" src="Images/Noise.png">
+<img width="500" src="Images/Noise.png">
 <br>
 <em>CD change by noise, depth images vs. generations [<a href="#c6">1</a>].</em>
 </p>
