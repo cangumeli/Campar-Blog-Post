@@ -187,7 +187,7 @@ The tricky situation here is to use this model at inference. If you have previou
 
 What instead can be done is to optimize a new latent vector for the unknown shape. We freeze the network parameters. Using the fact that neural networks are differentiable with respect to their inputs, we optimize latent vectors using gradient-descent:
 
-<img height="65" src="Formulas/AutoDecoder/InferZ.png"/>
+<img height="66" src="Formulas/AutoDecoder/InferZ.png"/>
 
 There are two very important points to make about the inference formula. First, ground-truth point-sdf pairs are available in inference time as well! However, these ground-truth points are available only for a sample of points, and we want to obtain the continuous function for the whole shape. Second, inference requires an entire training process with multiple backward passes of the network. This makes the model very slow at inference, probably the biggest downside of the DeepSDF approach.
 
@@ -299,7 +299,7 @@ And now, we do actual learning! We have the same training method in the previous
 
 One very weird detail we have here is that we assume we have some ground-truth samples of SDF values for the shape! They basically show latent code can represent a continuous SDF from discrete samples, and a new latent code can be obtained from these discrete samples. We can see that by looking back to the inference formula:
 
-<img height="70" src="Formulas/AutoDecoder/InferZ.png" />
+<img height="62" src="Formulas/AutoDecoder/InferZ.png" />
 
 Is this really learning or do we still overfit? It depends on your viewpoint.
 
@@ -308,7 +308,7 @@ A very natural extension of DeepSDF method is shape completion. More specificall
 
 I think this is the most interesting problem they attempt to solve. We now don't have ground-truth SDF values to represent all faces of a surface, we have some hidden faces! Therefore, the model has to learn SDF values around those faces.
 
-The approach the authors used for shape completion naturally follows the inference formulation. We again have some point-sdf samples and we optimize a latent vector for them. We then forward pass our deep neural network for points evenly sampled around the unit sphere coordinate system. Thus, we have the complete shape! The major difference, as stated, is the ground-truth SDF values are only the ones visible from a camera.
+The approach the authors used for shape completion naturally follows the inference formulation. We again have some point-sdf samples and we optimize a latent vector for them. We then forward pass our deep neural network for points evenly sampled around the unit sphere coordinate system. Thus, we have the complete shape! The major difference, as stated, is the ground-truth SDF values are only the ones visible from a camera. Different from the previous two experiments, 128-dimensional latent vectors are used.
 
 DeepSDF outperforms the 3D-EPN baseline in CD, EMD, and mesh-based metrics. This superiority can also be seen qualitatively in the selected sample shapes the authors have shown.
 
@@ -341,7 +341,7 @@ For assessing the effect of noise, authors picked the shape completion task and 
 
 
 ![](Images/NoisyDepth.png)
-*Example airplane depth images subjected to noise [<a href="#c1">1</a>]. *
+<em>Example airplane depth images subjected to noise [<a href="#c1">1</a>]. </em>
 
 The authors claim this shows the "regularization effect" of DeepSDF, something that suggests DeepSDF has good generalization properties. If that is true, then great! However, I have to admit the results look too good to be true. Further measurements should be done before claiming the model really generalizes well or not. One experiment that comes to my mind is measuring the distance of generated shapes to the closest example in training data. The model could be just copying and pasting!
 
@@ -352,7 +352,7 @@ My criticism aside, the robustness of the model to noise is still something very
 When talking about 3D vision models, computational efficiency is something one should care about for real-world usability. The table below compares memory use and computational speed:
 
 ![](Images/ResultTables/Efficiency.png)
-*Model size and inference time of different models. K and U stand for representing known and unknown shapes. C stands for shape completion [<a href="#c1">1</a>].*
+*Model size and inference time of different models. K and U stand for representing known and unknown shapes. C stands for shape completion [<a href="#c1">1</a>, <a href="#c2">2</a>, <a href="#c3">3</a>, <a href="#c4">4</a>].*
 
 The model has a significant advantage in terms of memory use compared to other models. However, inference time is really poor, since an iterative neural network optimization (Adam) must be done at inference!
 
