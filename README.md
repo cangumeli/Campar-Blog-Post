@@ -1,4 +1,4 @@
-# Submission Recent Trends in 3D Computer Vision and Deep Learning
+# Submission for Recent Trends in 3D Computer Vision and Deep Learning, WS 2019-2020
 Can Gümeli
 ## Repo Structure
 1) Blog post (approximately 5000 words excluding the citations) is [BLOGPOST.md](BLOGPOST.md)
